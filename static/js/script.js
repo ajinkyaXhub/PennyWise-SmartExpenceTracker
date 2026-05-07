@@ -606,6 +606,87 @@ if (mainApp) {
         }
     }
 
+    function renderHistoryChart() {
+        const historyCanvas = document.getElementById('historyChart');
+        if (!historyCanvas || window.appState.currentView !== 'analytics-view') return;
+
+        const { expenses, charts } = window.appState;
+        if (charts.history) charts.history.destroy();
+
+        const last6Months = [];
+        const now = new Date();
+        for (let i = 5; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            last6Months.push({
+                month: d.getMonth(),
+                year: d.getFullYear(),
+                label: d.toLocaleString('default', { month: 'short' }),
+                total: 0
+            });
+        }
+
+        expenses.forEach(exp => {
+            const d = new Date(exp.date);
+            const expMonth = d.getMonth();
+            const expYear = d.getFullYear();
+            
+            const monthData = last6Months.find(m => m.month === expMonth && m.year === expYear);
+            if (monthData) {
+                monthData.total += parseFloat(exp.amount) || 0;
+            }
+        });
+
+        window.appState.charts.history = new Chart(historyCanvas, {
+            type: 'bar',
+            data: {
+                labels: last6Months.map(m => m.label),
+                datasets: [{
+                    label: 'Monthly Spending',
+                    data: last6Months.map(m => m.total),
+                    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                    borderColor: '#10b981',
+                    borderWidth: 2,
+                    borderRadius: 8,
+                    hoverBackgroundColor: 'rgba(16, 185, 129, 0.4)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#1e293b',
+                        titleColor: '#94a3b8',
+                        bodyColor: '#fff',
+                        bodyFont: { weight: 'bold' },
+                        padding: 12,
+                        cornerRadius: 10,
+                        displayColors: false,
+                        callbacks: {
+                            label: (context) => ` ₹${context.raw.toLocaleString()}`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
+                        ticks: { 
+                            color: '#64748b', 
+                            font: { size: 10 },
+                            callback: (val) => '₹' + val.toLocaleString()
+                        }
+                    },
+                    x: {
+                        grid: { display: false, drawBorder: false },
+                        ticks: { color: '#94a3b8', font: { size: 11, weight: 'bold' } }
+                    }
+                }
+            }
+        });
+    }
+
     function renderSubscriptions() {
         const list = document.getElementById('subscription-list');
         if (!list) return;
@@ -645,6 +726,7 @@ if (mainApp) {
         renderExpenses();
         renderBudgets();
         renderChart();
+        renderHistoryChart();
     }
 
     // Voice Input for Expenses
